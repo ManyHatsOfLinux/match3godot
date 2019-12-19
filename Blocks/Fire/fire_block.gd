@@ -1,7 +1,19 @@
 extends Spatial
-export var I_match = int(0) 
-export var block_type = 7
-export var is_falling = 0
+
+var I_match = int(0) 
+var block_type = 7
+var is_falling = 0
+var grid_pos = [0,0]
+var fallset = 0
+
+
+
+
+
+
+	
+
+
 
 
 # Called when the node enters the scene tree for the first time.

@@ -10,36 +10,83 @@ onready var cursor_material = preload("res://cursor/Material.material")
 #push board every num frames
 export var push_count = 5
 var push_loop = 0
-
 var x_cursor
-var init_pos = Vector3(0,-10,0)
 var stoptime = 0
 var horizontal_pos = [-5,-3,-1,1,3,5]
-var offset = 0
+var offset = .25
 #will hold all block names in order. 
 var grid = []
-
+#to hold current falling blocks offset
+var fallset = 0 
 
 	
-	
-	
 
-func spawn_row():
-	#generate row 0 
-	var row = []
-	var column = []
+#rebuild grid from x_blocks transforms
+func update_grid():
+	#generate new blank grid
+	var newgrid = []
+	#if blocks are spawned	
+	#storage for columns
+	var newrow = []
+	#iterate on rows
+	for rows in range(12):
+		#and columns
+		for columns in range(6):
+			#add 
+			newrow.append([rows,columns,0,99,"DEAD"])
+
+		newgrid.append(newrow)
+		newrow = []
+	#also if blocks are spawned
+	if len(get_tree().get_nodes_in_group("spawned")) > 0:
+		for x_block in get_tree().get_nodes_in_group("spawned"):
+			var xpos
+			var ypos
+			var zpos = 0
+			#print(x_block.get_name(),":",x_block.global_transform.origin.x)
+			match x_block.global_transform.origin.x :
+				float(-5):
+					xpos = 0
+				float(-3):
+					xpos = 1
+				float(-1):
+					xpos = 2
+				float(1):
+					xpos = 3
+				float(3):
+					xpos = 4
+				float(5):
+					xpos = 5
+			if x_block.global_transform.origin.y < 1:
+				ypos = 0
+			else:
+				ypos = int(round(x_block.global_transform.origin.y / 2))
+			newgrid[ypos][xpos] = [x_block.global_transform.origin.x, x_block.global_transform.origin.y, x_block.global_transform.origin.z, x_block.block_type,x_block.get_name()]
+			#newgrid[ypos][xpos] = grid[ypos][xpos]
+			x_block.grid_pos[1] = xpos
+			x_block.grid_pos[0] = ypos
+			
+		grid = newgrid
+
+
+
+
+
+
+
+
+
+func spawn_row():	
 	for x in horizontal_pos:
 		var y = block.instance()
-		y.set_translation(Vector3(x,-2,0))
+		y.grid_pos = [0,x]
+		y.set_translation(Vector3(x,-0.75,0))
 		add_child(y)
-		row.append([y.global_transform.origin.x, y.global_transform.origin.y, y.global_transform.origin.z, y.block_type,y.get_name()])
-	# add rows from grid to our row
-	column.append(row)
-	for x in grid:
-		column.append(x)
-	grid = column
-		
-		
+	update_grid()
+
+
+
+
 
 func spawn_cursor():
 	x_cursor = cursor.instance()
@@ -54,13 +101,13 @@ func _ready():
 	
 
 func push_board_up():
-#	print(grid)
-	#print_tree()
 	#for every block
+	var clean_count = int(0)
 	for x in get_tree().get_nodes_in_group("spawned"):
 		#clean floor off blocks
 		if  x.global_transform.origin.y == 1 :
 			x.remove_from_group("not_spawned")
+
 	
 			match x.block_type:
 				1:
@@ -68,116 +115,187 @@ func push_board_up():
 				2:
 					x.get_node("Block/CollisionShape/block").material_override = fire_meterial
 					
-		#kill I_match blocks
-		if x.I_match == 1:
-			x.queue_free()
-			print(grid)
+			clean_count = clean_count + 1
+			if clean_count == 6:
+				spawn_row()
+				clean_count = 0
+				
+				
 		#kill blocks over pos 22
 		if  x.global_transform.origin.y > 22:
 				x.queue_free()
-		
-		#raise blocks /TODO/ if not gavity and stuff
+				
+		#raise blocks
 		x.set_translation(Vector3(x.global_transform.origin.x,x.global_transform.origin.y + 0.25 ,x.global_transform.origin.z))
 	#	x_cursor.set_translation(Vector3(x_cursor.global_transform.origin.x, x_cursor.global_transform.origin.y + 0.25 , x_cursor.global_transform.origin.z))
-	offset = offset + 0.25
 	
-	if offset == 2 : 
-			spawn_row()
-			offset = 0
+	offset = offset + 0.25
+	if offset == 2:
+		offset = 0
+
 			
 		
 
+func two_to_down(x_block):
+	#if x_block.global_transform.origin.x > 4.9:
+		if grid[x_block.grid_pos[0]][x_block.grid_pos[1]][3] == grid[x_block.grid_pos[0] - 1][x_block.grid_pos[1]][3] and grid[x_block.grid_pos[0] - 2][x_block.grid_pos[1]][3] == x_block.block_type and x_block.block_type != 99:
+			x_block.I_match = 1
+			print(x_block.global_transform.origin.x)
+			pass
+
+func two_to_up(x_block):
+	if grid[x_block.grid_pos[0]][x_block.grid_pos[1]][3] == grid[x_block.grid_pos[0] + 1][x_block.grid_pos[1]][3] and grid[x_block.grid_pos[0] + 2][x_block.grid_pos[1]][3] == x_block.block_type and x_block.block_type != 99:
+		x_block.I_match = 1
+	
+func two_to_right(x_block):
+	if grid[x_block.grid_pos[0]][x_block.grid_pos[1]][3] == grid[x_block.grid_pos[0]][x_block.grid_pos[1] + 1][3] and grid[x_block.grid_pos[0]][x_block.grid_pos[1] + 2][3] == x_block.block_type and x_block.block_type != 99:
+		x_block.I_match = 1
+
+func two_to_left(x_block):
+	if grid[x_block.grid_pos[0]][x_block.grid_pos[1]][3] == grid[x_block.grid_pos[0]][x_block.grid_pos[1] - 1][3] and grid[x_block.grid_pos[0]][x_block.grid_pos[1] - 2][3] == x_block.block_type and x_block.block_type != 99:
+		x_block.I_match = 1
+
+func two_to_v_sides(x_block):
+	#if x_block.global_transform.origin.x > 2.9:
+		if grid[x_block.grid_pos[0]][x_block.grid_pos[1]][3] == grid[x_block.grid_pos[0] - 1][x_block.grid_pos[1]][3] and grid[x_block.grid_pos[0] + 1][x_block.grid_pos[1]][3] == x_block.block_type and x_block.block_type != 99:
+			print("x:",x_block.global_transform.origin.x," Y:",x_block.global_transform.origin.y)
+			x_block.I_match = 1
+	
+func two_to_h_sides(x_block):
+	if grid[x_block.grid_pos[0]][x_block.grid_pos[1]][3] == grid[x_block.grid_pos[0]][x_block.grid_pos[1] + 1][3] and grid[x_block.grid_pos[0]][x_block.grid_pos[1] - 1][3] == x_block.block_type and x_block.block_type != 99:
+		x_block.I_match = 1
 
 
-func match_board():
-	#if grid not empty
-	if len(grid) > 0:
-		#for every row
-		for x in range(len(grid)):
-			#for every block in row
-			var column = str("")
-			for y in range(len(grid[x])):
-				#get current block
-				var z = get_node(grid[x][y][4])
+func any_blank_below(x_block):
+		pass
+
+
+func match_blocks():
+	#for every row
+	for x_block in get_tree().get_nodes_in_group("spawned"):
+		if x_block.is_in_group("not_spawned") == false and x_block.is_in_group("falling") == false :  
+			match x_block.grid_pos[1]:
+				0:
+					two_to_right(x_block)
+				1:
+					two_to_right(x_block)
+					two_to_h_sides(x_block)
+				2,3:
+					two_to_h_sides(x_block)
+					two_to_right(x_block)
+					two_to_left(x_block)
+				4:
+					two_to_h_sides(x_block)
+					two_to_left(x_block)
+				5:
+					two_to_left(x_block)
+			
+			match x_block.grid_pos[0]:
 				
-				#If not empty
-				if grid[x][y][3] != 99 :
-				
-				#if not spawned
-					if z.is_in_group("not_spawned"):
-						pass
-					else:
-						#if not on edge
-						if x < int(len(grid[x]) ):
-							#or on other edge
-							if y < int(len(grid[x][y]) ):
+				1:
+					two_to_up(x_block)
+						
+				2:
+					two_to_up(x_block)
+					two_to_v_sides(x_block)
+						
+				3,4,5,6,7,8,9:
+					two_to_up(x_block)
+					two_to_down(x_block)
+					two_to_v_sides(x_block)
 					
-								#if block_type equals next block
-								if grid[x][y][3] ==  grid[x][y + 1][3] and grid[x][y][3] ==  grid[x][y - 1][3]:
-									z.I_match = 1
-									z.queue_free()
-									grid[x][y][3] = 99 
-					column = column + str(z.I_match)
-				print(column)
-							
+				10:
+					two_to_down(x_block)
+					two_to_v_sides(x_block)
+				11:
+					two_to_down(x_block)
 
-#make blocks fall if nothing underneath
+
+
+
+
+
+
+
 func fall_blocks():
-	for x in range(len(grid)):
-		for y in range(len(grid[x])):
-			#if block empty
-			if grid[x][y][3] == 99:
-				#all blocks above must fall
-				for z in range(y+1,len(grid)):
-					#if not on edge
-					if x < int(len(grid[x]) -1):
-						#or on other edge
-						if z < int(len(grid[x][y]) -1):
-							if  grid[x][z][3] != 99 :
-								get_node(grid[x][z][4]).add_to_group("falling")
-								get_node(grid[x][z][4]).set_translation(Vector3(get_node(grid[x][z][4]).global_transform.origin.x,get_node(grid[x][z][4]).global_transform.origin.y - 0.25 ,get_node(grid[x][z][4]).global_transform.origin.z))
-								
-		#push blocks down
-		for x in get_tree().get_nodes_in_group("falling"):
-			if x.global_transform.origin.y in [0+offset,2+offset,4+offset,6+offset,8+offset,10+offset,12+offset,14+offset,16+offset,18+offset,20+offset,22+offset,24+offset]:  
-				x.remove_from_group("falling")
-			else: 
-				x.set_translation(Vector3(x.global_transform.origin.x,x.global_transform.origin.y - 0.25 ,x.global_transform.origin.z))
-				
-			
-			
-					
-				
+	if fallset == 0:
+		for columns in reversed(range(len(grid[0]))):
+			#create var to store blocks to fall
+			var to_fall = []
+			for rows in range(len(grid)) :
+				if grid[rows][columns][3] != 99:
+					to_fall.append(grid[rows][columns][4])
+				else: 
+					if len(to_fall) > 0:
+						for x_block_name in range(len(to_fall)):
+							var x_block = get_node(to_fall[x_block_name])
+							x_block.is_falling = 1
+							x_block.set_translation(Vector3(x_block.global_transform.origin.x,x_block.global_transform.origin.y - 0.25 ,x_block.global_transform.origin.z))
+							to_fall = []
+							fallset = fallset + 0.25
+	elif fallset < 2:
+		for x_block in get_tree().get_nodes_in_group("spawned"):
+			x_block.set_translation(Vector3(x_block.global_transform.origin.x,x_block.global_transform.origin.y - 0.25 ,x_block.global_transform.origin.z))
+			fallset = fallset + 0.25
+	else: 
+		#reset fallset
+		fallset = 0 
+		update_grid()
+		
+		
+		for columns in range(len(grid[0])):
+			for rows in range(len(grid)) :
+				var x_block = get_node(grid[rows][columns][4])
+				if x_block.is_falling == 1:
+					pass
+		
+
+#for columns in grid
+#for blocks
+#if empty block below
+#mark fall + push...wait 7 ticks.
+
+#then push + remove_fall to allow match_board
+
+	
+
 
 
 func kill_blocks():
-	for x in range(len(grid)):
-		for y in range(len(grid[x])):
-			if grid[x][y][3] != 99:
-				#if not on edge
-				if x < int(len(grid[x]) ):
-					#or on other edge
-					if y < int(len(grid[x][y]) ):
-						var z = get_node(grid[x][y][4])
-						if z.I_match == 1:
-							z.queue_free()
+	for x_block in get_tree().get_nodes_in_group("spawned"): 
+				if x_block.I_match == 1:
+					grid[x_block.grid_pos[0]][x_block.grid_pos[1]] = [x_block.grid_pos[0], x_block.grid_pos[1], 0, 99, "DEAD"]
+					x_block.queue_free()
 				
 
 
-
-#this runs every frame. essentially mainloop
+#this runs every "frame". essentially mainloop
 func _on_Timer_timeout():
-	var fallset = 0 
+	
+
+
+	update_grid()
+
+
+
+
+
+
+
 	fall_blocks()
-	match_board()
 	
-	kill_blocks()
-	
-	#push board
-	if stoptime == 0 and len(get_tree().get_nodes_in_group("falling")) < 1 and push_loop == push_count:
+	if len(get_tree().get_nodes_in_group("done_falling")) > 0 or offset == .25:
+		match_blocks()
+		kill_blocks()
+
+
+
+	if stoptime == 0 and len(get_tree().get_nodes_in_group("falling")) == 0 and push_loop == push_count:
 		push_board_up()
-		
-	
+		#if len(grid) > 1:
+			#print(grid[0])
+			#print(grid[1])
+
 	#decrement stop time every "frame" thing
 	if stoptime > 0:
 		stoptime = stoptime - 1
@@ -189,8 +307,6 @@ func _on_Timer_timeout():
 	#or increase it
 	else: 
 		push_loop = push_loop + 1
-
-
 		
 		
  
