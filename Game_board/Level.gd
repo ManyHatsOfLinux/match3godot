@@ -3,12 +3,14 @@ extends Spatial
 onready var block = preload("res://Blocks/block.tscn")
 onready var water_meterial = preload("res://Blocks/Water/water.material")
 onready var fire_meterial = preload("res://Blocks/Fire/fire.material")
+onready var grass_meterial = preload("res://Blocks/grass/Material.material")
 
 onready var cursor = preload("res://cursor/Cursor.tscn")
 onready var cursor_material = preload("res://cursor/Material.material")
 
 #push board every num frames
-export var push_count = 1
+export var init_push_count = 5
+var push_count = init_push_count
 var push_loop = 0
 var x_cursor
 var stoptime = 0
@@ -18,7 +20,7 @@ var offset = .25
 var grid = []
 #to hold current falling blocks offset
 var fallset = 0 
-
+var swapset = 0
 	
 
 #rebuild grid from x_blocks transforms
@@ -102,7 +104,7 @@ func _ready():
 
 func push_board_up():
 	#for every block
-	var clean_count = int(0)
+
 	for x in get_tree().get_nodes_in_group("spawned"):
 		#clean floor off blocks
 		if  x.global_transform.origin.y == 1 :
@@ -114,12 +116,9 @@ func push_board_up():
 					x.get_node("Block/CollisionShape/block").material_override = water_meterial
 				2:
 					x.get_node("Block/CollisionShape/block").material_override = fire_meterial
-					
-			clean_count = clean_count + 1
-			if clean_count == 6:
-				
-				clean_count = 0
-				
+				3:
+					x.get_node("Block/CollisionShape/block").material_override = grass_meterial
+
 				
 		#kill blocks over pos 22
 		if  x.global_transform.origin.y > 22:
@@ -170,6 +169,14 @@ func is_blank_below(x_block):
 		return falling;
 
 
+func get_fall_distance(x_block):
+	var falling_distance = 0
+	if x_block.grid_pos[0] > 0:
+		for rows in range(x_block.grid_pos[0]):
+			if grid[rows][x_block.grid_pos[1]][3] == 99:
+				falling_distance = float(falling_distance + 2)
+	return falling_distance;
+
 func match_blocks():
 	#for every row
 	for x_block in get_tree().get_nodes_in_group("spawned"):
@@ -218,22 +225,27 @@ func match_blocks():
 
 
 func fall_blocks():
-	update_grid()
 
+	var done_falling = 0
 	for x_block in get_tree().get_nodes_in_group("spawned"):
-		if is_blank_below(x_block) == true:
-					x_block.is_falling = 1
-					x_block.add_to_group("falling")
-		else:
-			x_block.is_falling = 0
+		if x_block.is_in_group("falling") == false:
+			x_block.fall_distance = get_fall_distance(x_block)
+			if x_block.fall_distance > 0:
+				x_block.add_to_group("falling")
+
+		
+	for x_block in get_tree().get_nodes_in_group("falling"):
+		#push down
+		x_block.set_translation(Vector3(x_block.global_transform.origin.x,x_block.global_transform.origin.y - 0.25 ,x_block.global_transform.origin.z))
+		x_block.fall_distance = x_block.fall_distance - 0.25
+		if x_block.fall_distance == 0:
 			x_block.remove_from_group("falling")
-				#if is_blank_below(x_block) == false:
+			done_falling = 1
+		
+		
+	if done_falling == 1 and len(get_tree().get_nodes_in_group("swapping")) == 0:
+		update_grid()
 
-		if x_block.is_falling == 1:
-			x_block.set_translation(Vector3(x_block.global_transform.origin.x,x_block.global_transform.origin.y - 0.25 ,x_block.global_transform.origin.z))
-	
-
-	
 
 #for columns in grid
 #for blocks
@@ -254,11 +266,58 @@ func kill_blocks():
 				
 
 
+
+func swap_from_cursor():
+	if len(get_tree().get_nodes_in_group("swapping")) == 0:
+		var fake_x_block1 = grid[x_cursor.grid_pos[0]][x_cursor.grid_pos[1]]
+		var fake_x_block2 = grid[x_cursor.grid_pos[0]][x_cursor.grid_pos[1] + 1]
+		if fake_x_block1[3] != 99:
+			var x_block1 = get_node(fake_x_block1[4])
+			x_block1.add_to_group("swapping")
+			x_block1.set_translation(Vector3(x_block1.global_transform.origin.x + 0.5, x_block1.global_transform.origin.y, x_block1.global_transform.origin.z))
+			swapset = 0.5
+		if fake_x_block2[3] != 99:
+			var x_block2 = get_node(fake_x_block2[4])
+			x_block2.add_to_group("swapping") 
+			x_block2.set_translation(Vector3(x_block2.global_transform.origin.x - 0.5, x_block2.global_transform.origin.y, x_block2.global_transform.origin.z))
+			swapset = 0.5
+
+
+func keep_swapping():
+		if swapset < 2:
+			var orig_swapset = fallset
+			var fake_x_block1 = grid[x_cursor.grid_pos[0]][x_cursor.grid_pos[1]]
+			var fake_x_block2 = grid[x_cursor.grid_pos[0]][x_cursor.grid_pos[1] + 1]
+			if fake_x_block1[3] != 99:
+				var x_block1 = get_node(fake_x_block1[4])
+				x_block1.set_translation(Vector3(x_block1.global_transform.origin.x + 0.5, x_block1.global_transform.origin.y, x_block1.global_transform.origin.z))
+				swapset = swapset + 0.5
+			if fake_x_block2[3] != 99:
+				var x_block2 = get_node(fake_x_block2[4])
+				x_block2.set_translation(Vector3(x_block2.global_transform.origin.x - 0.5, x_block2.global_transform.origin.y, x_block2.global_transform.origin.z))
+				if swapset == orig_swapset:
+					swapset = swapset + 0.5
+		else:
+			var fake_x_block1 = grid[x_cursor.grid_pos[0]][x_cursor.grid_pos[1]]
+			var fake_x_block2 = grid[x_cursor.grid_pos[0]][x_cursor.grid_pos[1] + 1]
+			if fake_x_block1[3] != 99:
+				var x_block1 = get_node(fake_x_block1[4])
+				x_block1.remove_from_group("swapping")
+			if fake_x_block2[3] != 99:
+				var x_block2 = get_node(fake_x_block2[4])
+				x_block2.remove_from_group("swapping")
+				swapset = 0 
+				update_grid()
+				fall_blocks()
+	
+
+
 #this runs every "frame". essentially mainloop
 func _on_Timer_timeout():
 	#update_grid()
 	if offset == 2 or len(grid) == 0:
 		spawn_row()
+		x_cursor.grid_pos[0] = x_cursor.grid_pos[0] + 1
 		offset = 0
 
 
@@ -267,14 +326,15 @@ func _on_Timer_timeout():
 		fall_blocks()
 		pass
 	
-	if len(get_tree().get_nodes_in_group("done_falling")) > 0 or offset == .25:
+	if len(get_tree().get_nodes_in_group("falling")) == 0 :
 		match_blocks()
 		kill_blocks()
 
 
-
-	if stoptime == 0 and len(get_tree().get_nodes_in_group("falling")) == 0 and push_loop == push_count:
+	if stoptime == 0 and len(get_tree().get_nodes_in_group("falling")) == 0 and len(get_tree().get_nodes_in_group("swapping")) == 0 and push_loop == push_count:
 		push_board_up()
+		if x_cursor.global_transform.origin.y < 20:
+			x_cursor.set_translation(Vector3(x_cursor.global_transform.origin.x,x_cursor.global_transform.origin.y + 0.25, x_cursor.global_transform.origin.z))
 		offset = offset + 0.25
 		
 
@@ -283,8 +343,26 @@ func _on_Timer_timeout():
 		stoptime = stoptime - 1
 	
 	
+	
+	
+	
+	#swap_from_cursor
+	if Input.is_key_pressed(KEY_SPACE) and len(get_tree().get_nodes_in_group("swapping")) == 0:
+		swap_from_cursor()
+	
+	#keep swapping
+	if len(get_tree().get_nodes_in_group("swapping")) > 0:
+		keep_swapping()
+	
+	#execute push_board faster
+	if Input.is_key_pressed(KEY_S):
+		push_count = 1
+	else: 
+		push_count = init_push_count
+	
+	
 	#reset push_loop if full
-	if push_loop == push_count:
+	if push_loop > push_count - 1:
 		push_loop = 0
 	#or increase it
 	else: 

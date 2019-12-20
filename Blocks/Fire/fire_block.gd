@@ -5,8 +5,8 @@ var block_type = 7
 var is_falling = 0
 var grid_pos = [0,0]
 var fallset = 0
-
-
+var fall_distance = 0
+var swapset = 0
 
 
 
@@ -21,7 +21,7 @@ func _ready():
 	add_to_group("not_spawned")
 	add_to_group("spawned")
 	randomize()
-	block_type = randi() %2+1
+	block_type = randi() %3+1
 	
 
 	
