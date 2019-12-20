@@ -8,7 +8,7 @@ onready var cursor = preload("res://cursor/Cursor.tscn")
 onready var cursor_material = preload("res://cursor/Material.material")
 
 #push board every num frames
-export var push_count = 5
+export var push_count = 1
 var push_loop = 0
 var x_cursor
 var stoptime = 0
@@ -97,7 +97,7 @@ func spawn_cursor():
 	
 func _ready():
 	spawn_cursor()
-	spawn_row()
+
 	
 
 func push_board_up():
@@ -117,7 +117,7 @@ func push_board_up():
 					
 			clean_count = clean_count + 1
 			if clean_count == 6:
-				spawn_row()
+				
 				clean_count = 0
 				
 				
@@ -129,9 +129,7 @@ func push_board_up():
 		x.set_translation(Vector3(x.global_transform.origin.x,x.global_transform.origin.y + 0.25 ,x.global_transform.origin.z))
 	#	x_cursor.set_translation(Vector3(x_cursor.global_transform.origin.x, x_cursor.global_transform.origin.y + 0.25 , x_cursor.global_transform.origin.z))
 	
-	offset = offset + 0.25
-	if offset == 2:
-		offset = 0
+
 
 			
 		
@@ -140,7 +138,6 @@ func two_to_down(x_block):
 	#if x_block.global_transform.origin.x > 4.9:
 		if grid[x_block.grid_pos[0]][x_block.grid_pos[1]][3] == grid[x_block.grid_pos[0] - 1][x_block.grid_pos[1]][3] and grid[x_block.grid_pos[0] - 2][x_block.grid_pos[1]][3] == x_block.block_type and x_block.block_type != 99:
 			x_block.I_match = 1
-			print(x_block.global_transform.origin.x)
 			pass
 
 func two_to_up(x_block):
@@ -158,7 +155,6 @@ func two_to_left(x_block):
 func two_to_v_sides(x_block):
 	#if x_block.global_transform.origin.x > 2.9:
 		if grid[x_block.grid_pos[0]][x_block.grid_pos[1]][3] == grid[x_block.grid_pos[0] - 1][x_block.grid_pos[1]][3] and grid[x_block.grid_pos[0] + 1][x_block.grid_pos[1]][3] == x_block.block_type and x_block.block_type != 99:
-			print("x:",x_block.global_transform.origin.x," Y:",x_block.global_transform.origin.y)
 			x_block.I_match = 1
 	
 func two_to_h_sides(x_block):
@@ -166,8 +162,12 @@ func two_to_h_sides(x_block):
 		x_block.I_match = 1
 
 
-func any_blank_below(x_block):
-		pass
+func is_blank_below(x_block):
+	var falling = false
+	for rows in range(1, x_block.grid_pos[0]):
+		if grid[rows][x_block.grid_pos[1]][3] == 99:
+			falling = true
+		return falling;
 
 
 func match_blocks():
@@ -218,37 +218,29 @@ func match_blocks():
 
 
 func fall_blocks():
-	if fallset == 0:
-		for columns in reversed(range(len(grid[0]))):
-			#create var to store blocks to fall
-			var to_fall = []
-			for rows in range(len(grid)) :
-				if grid[rows][columns][3] != 99:
-					to_fall.append(grid[rows][columns][4])
-				else: 
-					if len(to_fall) > 0:
-						for x_block_name in range(len(to_fall)):
-							var x_block = get_node(to_fall[x_block_name])
-							x_block.is_falling = 1
-							x_block.set_translation(Vector3(x_block.global_transform.origin.x,x_block.global_transform.origin.y - 0.25 ,x_block.global_transform.origin.z))
-							to_fall = []
-							fallset = fallset + 0.25
-	elif fallset < 2:
+	print(fallset)
+	print("push")
+	#mark to fall and keep falling 
+	if fallset < 2:
 		for x_block in get_tree().get_nodes_in_group("spawned"):
-			x_block.set_translation(Vector3(x_block.global_transform.origin.x,x_block.global_transform.origin.y - 0.25 ,x_block.global_transform.origin.z))
+			if is_blank_below(x_block) == true:
+						x_block.is_falling = 1
+						x_block.add_to_group("falling")
+			if x_block.is_falling == 1:
+				x_block.set_translation(Vector3(x_block.global_transform.origin.x,x_block.global_transform.origin.y - 0.25 ,x_block.global_transform.origin.z))
+		if len(get_tree().get_nodes_in_group("falling"))  > 0:
 			fallset = fallset + 0.25
-	else: 
+	else:
 		#reset fallset
 		fallset = 0 
 		update_grid()
-		
-		
-		for columns in range(len(grid[0])):
-			for rows in range(len(grid)) :
-				var x_block = get_node(grid[rows][columns][4])
-				if x_block.is_falling == 1:
-					pass
-		
+		for x_block in get_tree().get_nodes_in_group("falling"):
+				if  is_blank_below(x_block) == false:
+					x_block.is_falling = 0
+					x_block.remove_from_group("falling")
+					#if is_blank_below(x_block) == false:
+
+	
 
 #for columns in grid
 #for blocks
@@ -271,18 +263,16 @@ func kill_blocks():
 
 #this runs every "frame". essentially mainloop
 func _on_Timer_timeout():
-	
-
-
-	update_grid()
-
-
-
+	#update_grid()
+	if offset == 2 or len(grid) == 0:
+		spawn_row()
+		offset = 0
 
 
 
-
-	fall_blocks()
+	if len(grid) > 0:
+		fall_blocks()
+		pass
 	
 	if len(get_tree().get_nodes_in_group("done_falling")) > 0 or offset == .25:
 		match_blocks()
@@ -292,9 +282,8 @@ func _on_Timer_timeout():
 
 	if stoptime == 0 and len(get_tree().get_nodes_in_group("falling")) == 0 and push_loop == push_count:
 		push_board_up()
-		#if len(grid) > 1:
-			#print(grid[0])
-			#print(grid[1])
+		offset = offset + 0.25
+		
 
 	#decrement stop time every "frame" thing
 	if stoptime > 0:
