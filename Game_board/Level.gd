@@ -218,27 +218,20 @@ func match_blocks():
 
 
 func fall_blocks():
-	print(fallset)
-	print("push")
-	#mark to fall and keep falling 
-	if fallset < 2:
-		for x_block in get_tree().get_nodes_in_group("spawned"):
-			if is_blank_below(x_block) == true:
-						x_block.is_falling = 1
-						x_block.add_to_group("falling")
-			if x_block.is_falling == 1:
-				x_block.set_translation(Vector3(x_block.global_transform.origin.x,x_block.global_transform.origin.y - 0.25 ,x_block.global_transform.origin.z))
-		if len(get_tree().get_nodes_in_group("falling"))  > 0:
-			fallset = fallset + 0.25
-	else:
-		#reset fallset
-		fallset = 0 
-		update_grid()
-		for x_block in get_tree().get_nodes_in_group("falling"):
-				if  is_blank_below(x_block) == false:
-					x_block.is_falling = 0
-					x_block.remove_from_group("falling")
-					#if is_blank_below(x_block) == false:
+	update_grid()
+
+	for x_block in get_tree().get_nodes_in_group("spawned"):
+		if is_blank_below(x_block) == true:
+					x_block.is_falling = 1
+					x_block.add_to_group("falling")
+		else:
+			x_block.is_falling = 0
+			x_block.remove_from_group("falling")
+				#if is_blank_below(x_block) == false:
+
+		if x_block.is_falling == 1:
+			x_block.set_translation(Vector3(x_block.global_transform.origin.x,x_block.global_transform.origin.y - 0.25 ,x_block.global_transform.origin.z))
+	
 
 	
 
