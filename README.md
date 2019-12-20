@@ -13,9 +13,10 @@ Currently "broken".
 
 
 TODO:
+
 UI (of any kind)
 
-fix matching
+fix swapping
 
 Combo system + Scoring
 
