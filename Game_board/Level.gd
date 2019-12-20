@@ -110,7 +110,7 @@ func push_board_up():
 		if  x.global_transform.origin.y == 1 :
 			x.remove_from_group("not_spawned")
 
-	
+
 			match x.block_type:
 				1:
 					x.get_node("Block/CollisionShape/block").material_override = water_meterial
@@ -252,9 +252,8 @@ func fall_blocks():
 #if empty block below
 #mark fall + push...wait 7 ticks.
 
-#then push + remove_fall to allow match_board
 
-	
+#then push + remove_fall to allow match_board
 
 
 
