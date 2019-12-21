@@ -7,7 +7,7 @@ var grid_pos = [0,0]
 var fallset = 0
 var fall_distance = 0
 var swapset = 0
-
+var swap_direction = ""
 
 
 

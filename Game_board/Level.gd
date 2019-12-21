@@ -20,8 +20,8 @@ var offset = .25
 var grid = []
 #to hold current falling blocks offset
 var fallset = 0 
-var swapset = 0
-	
+var swapset1 = 0
+var swapset2 = 0	
 
 #rebuild grid from x_blocks transforms
 func update_grid():
@@ -242,7 +242,7 @@ func fall_blocks():
 			x_block.remove_from_group("falling")
 			done_falling = 1
 		
-		
+
 	if done_falling == 1 and len(get_tree().get_nodes_in_group("swapping")) == 0:
 		update_grid()
 
@@ -267,6 +267,7 @@ func kill_blocks():
 
 
 func swap_from_cursor():
+	#only one concurrent instance of swap
 	if len(get_tree().get_nodes_in_group("swapping")) == 0:
 		var fake_x_block1 = grid[x_cursor.grid_pos[0]][x_cursor.grid_pos[1]]
 		var fake_x_block2 = grid[x_cursor.grid_pos[0]][x_cursor.grid_pos[1] + 1]
@@ -274,41 +275,43 @@ func swap_from_cursor():
 			var x_block1 = get_node(fake_x_block1[4])
 			x_block1.add_to_group("swapping")
 			x_block1.set_translation(Vector3(x_block1.global_transform.origin.x + 0.5, x_block1.global_transform.origin.y, x_block1.global_transform.origin.z))
-			swapset = 0.5
+			x_block1.swapset = 1.5
+			x_block1.swap_direction = "right"
 		if fake_x_block2[3] != 99:
 			var x_block2 = get_node(fake_x_block2[4])
 			x_block2.add_to_group("swapping") 
 			x_block2.set_translation(Vector3(x_block2.global_transform.origin.x - 0.5, x_block2.global_transform.origin.y, x_block2.global_transform.origin.z))
-			swapset = 0.5
-
+			x_block2.swapset = 1.5
+			x_block2.swap_direction = "left"
 
 func keep_swapping():
-		if swapset < 2:
-			var orig_swapset = fallset
-			var fake_x_block1 = grid[x_cursor.grid_pos[0]][x_cursor.grid_pos[1]]
-			var fake_x_block2 = grid[x_cursor.grid_pos[0]][x_cursor.grid_pos[1] + 1]
-			if fake_x_block1[3] != 99:
-				var x_block1 = get_node(fake_x_block1[4])
-				x_block1.set_translation(Vector3(x_block1.global_transform.origin.x + 0.5, x_block1.global_transform.origin.y, x_block1.global_transform.origin.z))
-				swapset = swapset + 0.5
-			if fake_x_block2[3] != 99:
-				var x_block2 = get_node(fake_x_block2[4])
-				x_block2.set_translation(Vector3(x_block2.global_transform.origin.x - 0.5, x_block2.global_transform.origin.y, x_block2.global_transform.origin.z))
-				if swapset == orig_swapset:
-					swapset = swapset + 0.5
+	for x_block in get_tree().get_nodes_in_group("swapping"):
+		#keep_going
+		if x_block.swapset > 0 :
+			match x_block.swap_direction:
+				"left":
+					x_block.set_translation(Vector3(x_block.global_transform.origin.x - 0.5, x_block.global_transform.origin.y, x_block.global_transform.origin.z))
+					x_block.swapset = x_block.swapset - 0.5
+				"right":
+					x_block.set_translation(Vector3(x_block.global_transform.origin.x + 0.5, x_block.global_transform.origin.y, x_block.global_transform.origin.z))
+					x_block.swapset = x_block.swapset - 0.5
+		#stop moving
 		else:
-			var fake_x_block1 = grid[x_cursor.grid_pos[0]][x_cursor.grid_pos[1]]
-			var fake_x_block2 = grid[x_cursor.grid_pos[0]][x_cursor.grid_pos[1] + 1]
-			if fake_x_block1[3] != 99:
-				var x_block1 = get_node(fake_x_block1[4])
-				x_block1.remove_from_group("swapping")
-			if fake_x_block2[3] != 99:
-				var x_block2 = get_node(fake_x_block2[4])
-				x_block2.remove_from_group("swapping")
-				swapset = 0 
-				update_grid()
-				fall_blocks()
-	
+			x_block.remove_from_group("swapping")
+			update_grid()
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #this runs every "frame". essentially mainloop
@@ -341,10 +344,9 @@ func _on_Timer_timeout():
 	if stoptime > 0:
 		stoptime = stoptime - 1
 	
-	
-	
-	
-	
+
+
+
 	#swap_from_cursor
 	if Input.is_key_pressed(KEY_SPACE) and len(get_tree().get_nodes_in_group("swapping")) == 0:
 		swap_from_cursor()
@@ -352,6 +354,7 @@ func _on_Timer_timeout():
 	#keep swapping
 	if len(get_tree().get_nodes_in_group("swapping")) > 0:
 		keep_swapping()
+		print("swap1:",swapset1," swap2: ",swapset2)
 	
 	#execute push_board faster
 	if Input.is_key_pressed(KEY_S):
@@ -368,6 +371,3 @@ func _on_Timer_timeout():
 		push_loop = push_loop + 1
 		
 		
- 
-
-
